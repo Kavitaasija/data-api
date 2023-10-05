@@ -51,19 +51,19 @@ pip install -m requirements.txt
 ### Run the HTTP server locally
 
 ```shell
-uvicorn main:app --port 8080 --reload
+uvicorn main:app --port 8081 --reload
 ```
 
 ### Build the docker image
 
 ```shell
-docker build -t data-api .
+docker build -t python-api-app .
 ```
 
 ### Run the docker image as a container
 
 ```shell
-docker run -p 8080:8080 data-api
+docker run -p 8081:8081 python-api-app
 ```
 
 #### Deactivate the virtual environment
