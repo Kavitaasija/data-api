@@ -51,7 +51,7 @@ pip install -m requirements.txt
 ### Run the HTTP server locally
 
 ```shell
-uvicorn main:app --port 8081 --reload
+uvicorn src.main:app --port 8081 --reload
 ```
 
 ### Build the docker image
