@@ -1,7 +1,15 @@
 name: hello-world
-on: push
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
 jobs:
-  unit-tests:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -11,3 +19,57 @@ jobs:
           cache: 'pip'
       - run: pip install -r requirements.txt
       - run: pytest
+
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [ build ]
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: kasija-docker
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+
+    helm:
+      runs-on: ubuntu-latest
+      needs: [ build ]
+      permissions:
+        id-token: write
+        contents: read
+      steps:
+        - uses: actions/checkout@v3
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@v4
+          with:
+            role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+            aws-region: ${{ secrets.AWS_REGION }}
+        - name: AWS ECR Login
+          id: ecr_login
+          uses: KaMeHb-UA/aws-cli-action@v3
+          with:
+            command: aws ecr get-login-password
+        - name: Push Helm chart to Amazon Elastic Container Registry (ECR)
+          uses: bsord/helm-push@v4.1.0
+          with:
+            useOCIRegistry: true
+            registry-url: oci://889772146711.dkr.ecr.us-east-1.amazonaws.com/
+            username: AWS
+            access-token: ${{ steps.ecr_login.outputs.result }}
+            chart-folder: helm
